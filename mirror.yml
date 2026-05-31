@@ -1,0 +1,55 @@
+name: glab
+target:
+  registry: ocx.sh
+  repository: glab
+
+source:
+  type: url_index
+  generator:
+    command: ["uv", "run", "generate.py"]
+    timeout_seconds: 240
+
+assets:
+  linux/amd64:
+    - "^glab_.*_linux_amd64\\.tar\\.gz$"
+  linux/arm64:
+    - "^glab_.*_linux_arm64\\.tar\\.gz$"
+
+asset_type:
+  type: archive
+  # glab tarballs unpack to bin/glab + docs at the root — no wrapper dir.
+  strip_components: 0
+
+metadata:
+  default: metadata.json
+
+skip_prereleases: true
+cascade: true
+build_timestamp: none
+
+versions:
+  min: "1.100.0"
+  new_per_run: 5
+  poll_interval: "0 */6 * * *"
+
+concurrency:
+  max_downloads: 4
+  max_bundles: 2
+  max_pushes: 2
+  rate_limit_ms: 200
+  max_retries: 3
+  compression_threads: 0
+
+tests:
+  - name: smoke
+    script: tests/smoke.star
+
+platforms:
+  linux/amd64:
+    runner: ubuntu-latest
+  linux/arm64:
+    runner: ubuntu-24.04-arm
+
+notify:
+  discord:
+    webhook_secret: OCX_MIRROR_DISCORD_HOOK

@@ -1,0 +1,21 @@
+[metadata]
+lock_version = 1
+declaration_hash_version = 1
+declaration_hash = "sha256:b1a0a9b05b2a9b8cfebd330e4855cb57e37d2b203ab7d14d819cd195e9478d74"
+generated_by = "ocx 0.3.4"
+generated_at = "2026-05-31T21:58:01Z"
+
+[[tool]]
+name = "cli"
+group = "default"
+pinned = "dev.ocx.sh/ocx/cli@sha256:ca7faca2429c3b7571dd6496145f5c770bd44eaf26f56a0f04cd4e693e1d588c"
+
+[[tool]]
+name = "mirror"
+group = "default"
+pinned = "dev.ocx.sh/ocx/mirror@sha256:7e1996a267530b46620673dacba2b9292b1f174884222f172f782e21a043e374"
+
+[[tool]]
+name = "uv"
+group = "default"
+pinned = "ocx.sh/uv@sha256:dbaa6b21e4c3f6bce27da84085466ad0256358726b5c4b250dd4effe4c98eec8"
