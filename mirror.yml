@@ -14,6 +14,10 @@ assets:
     - "^glab_.*_linux_amd64\\.tar\\.gz$"
   linux/arm64:
     - "^glab_.*_linux_arm64\\.tar\\.gz$"
+  darwin/amd64:
+    - "^glab_.*_darwin_amd64\\.tar\\.gz$"
+  darwin/arm64:
+    - "^glab_.*_darwin_arm64\\.tar\\.gz$"
 
 asset_type:
   type: archive
@@ -49,6 +53,10 @@ platforms:
     runner: ubuntu-latest
   linux/arm64:
     runner: ubuntu-24.04-arm
+  darwin/amd64:
+    runner: macos-13
+  darwin/arm64:
+    runner: macos-14
 
 notify:
   discord:
