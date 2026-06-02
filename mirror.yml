@@ -18,10 +18,13 @@ assets:
     - "^glab_.*_darwin_amd64\\.tar\\.gz$"
   darwin/arm64:
     - "^glab_.*_darwin_arm64\\.tar\\.gz$"
+  windows/amd64:
+    - "^glab_.*_windows_amd64\\.zip$"
 
 asset_type:
   type: archive
-  # glab tarballs unpack to bin/glab + docs at the root — no wrapper dir.
+  # glab tarballs unpack to bin/glab + docs at the root, and the windows zip
+  # is flat with glab.exe at the root — no wrapper dir on any platform.
   strip_components: 0
 
 metadata:
@@ -59,6 +62,9 @@ platforms:
     runner: macos-14
   darwin/arm64:
     runner: macos-14
+  windows/amd64:
+    runner: windows-latest
+    shell: pwsh
 
 notify:
   discord:

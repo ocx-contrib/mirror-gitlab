@@ -17,9 +17,10 @@ source-agnostic `Release` objects; we reshape the curated asset links into
 a `url_index` document mapping each version to the platform tarballs we
 mirror.
 
-Asset names follow `glab_<version>_<os>_<arch>.tar.gz`. We select the Linux
-and macOS tarballs only; `mirror.yml`'s `assets:` regex maps those filenames
-back to platforms. The SDK surfaces each curated link's stable
+Asset names follow `glab_<version>_<os>_<arch>.tar.gz` for Linux/macOS and
+`glab_<version>_windows_amd64.zip` for Windows. We select those platform
+archives; `mirror.yml`'s `assets:` regex maps the filenames back to
+platforms. The SDK surfaces each curated link's stable
 `/-/releases/<tag>/downloads/<name>` URL via `browser_download_url`.
 """
 
@@ -39,6 +40,7 @@ WANTED_SUFFIXES = (
     "_linux_arm64.tar.gz",
     "_darwin_amd64.tar.gz",
     "_darwin_arm64.tar.gz",
+    "_windows_amd64.zip",
 )
 
 
