@@ -6,6 +6,6 @@
 # `uv` on PATH when invoking the PEP 723 generator script.
 
 [tools]
-cli = "dev.ocx.sh/ocx/cli:0.3.5-dev"
-mirror = "dev.ocx.sh/ocx/mirror:0.3.5-dev"
+cli = "dev.ocx.sh/ocx/cli:0.3.6-dev"
+mirror = "dev.ocx.sh/ocx/mirror:0.3.6-dev"
 uv = "ocx.sh/uv:0"
