@@ -31,16 +31,23 @@ from ocx_mirror_sdk import IndexBuilder, gitlab
 PROJECT = "gitlab-org/cli"
 TAG_RE = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)$")
 
-# Asset-name suffixes for the platforms this mirror ships. Releases that
+# Asset-name suffixes for the platforms this mirror ships — one per key in
+# mirror.yml's `assets:`, and the version floor there (1.103.0) is what
+# guarantees every release in range actually carries all six. Releases that
 # predate the lowercase `linux_amd64` naming (≤ v1.45, which used
 # `Linux_x86_64`) yield no matching assets and are skipped automatically
 # (`add_version` is a no-op when `assets` is empty).
+#
+# Lowercase `_windows_arm64.zip` is the portable archive; the capitalised
+# `_Windows_arm64_installer.exe` upstream also ships is an installer and is not
+# matched by a suffix test that is case-sensitive.
 WANTED_SUFFIXES = (
     "_linux_amd64.tar.gz",
     "_linux_arm64.tar.gz",
     "_darwin_amd64.tar.gz",
     "_darwin_arm64.tar.gz",
     "_windows_amd64.zip",
+    "_windows_arm64.zip",
 )
 
 
