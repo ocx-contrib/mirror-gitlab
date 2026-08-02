@@ -6,6 +6,13 @@ extends: ../mirror-base.yml
 # so `gitlab/cli` ships `glab`, exactly as `github/cli` ships `gh`.
 name: cli
 
+# Logical index package `gitlab/cli` at the physical path
+# `ghcr.io/ocx-contrib/gitlab/cli` — slash segments, never hyphen-flattened.
+# The first segment must be this repo's own GitHub owner: GITHUB_TOKEN only
+# authorises packages owned by the repo the workflow runs in.
+#
+# Succeeds the flat `ocx.sh/glab` coordinate this repository published before
+# the grouped layout, the same way mirror-kitware/cmake succeeds mirror-cmake.
 target:
   registry: ghcr.io
   repository: ocx-contrib/gitlab/cli
@@ -15,23 +22,47 @@ target:
 # ocx-mirror-sdk and emits a url_index. `uv` is the runtime that runs it and is
 # pinned in ocx.toml as the NAMESPACED `ocx.sh/astral-sh/uv:0`; the legacy flat
 # `ocx.sh/uv:0` is forbidden — it dies with the ocx.sh host.
+#
+# `command` resolves against THIS spec's directory, so the path is
+# `scripts/generate.py` and not `cli/scripts/generate.py`.
 source:
   type: url_index
   generator:
     command: ["uv", "run", "scripts/generate.py"]
     timeout_seconds: 240
 
+# ─── libc gate (Phase 3.5) — the evidence, not the conclusion ───────────────
+#
 # Linkage measured 2026-08-01 on v1.111.0, both Linux arches (evidence in
 # .claude/libc-audit-2026-08-01.json):
 #   glab: ELF 64-bit LSB executable, statically linked
 #   readelf -l | grep INTERP  → no INTERP segment
 #   readelf -d | grep NEEDED  → no output
 # Fully static ⇒ requires nothing of the host ⇒ BARE keys, no libc feature.
-# Upstream ships one linux build per arch — there is no musl/gnu split.
+# Upstream ships one linux build per arch — there is no musl/gnu split. The
+# `.apk`/`.deb`/`.rpm` artifacts are that same static binary in three distro
+# wrappers, not a second linkage to split against. The container legs
+# (ubuntu + alpine + fedora) in ../mirror-base.yml are what turn the bare-key
+# claim into evidence.
 #
-# Anchored patterns exclude the checksums file and the non-amd64/arm64 triples
-# upstream also publishes. Upstream ships no windows/arm64 build, so that
-# platform is deliberately absent rather than declared-and-skipped.
+# ─── Scope (verified against the full in-range set, v1.103.0 … v1.111.0) ────
+#
+# Upstream also publishes, and this mirror deliberately does not carry:
+#   glab_*_linux_{386,armv6,ppc64le,s390x}.tar.gz  — no GHA runner
+#   glab_*_freebsd_{386,amd64,armv6}.tar.gz        — no OCX platform
+#   glab_*_windows_386.zip                         — no GHA runner
+#   *.apk / *.deb / *.rpm                          — distro packages
+#   glab_*_Windows_{x86_64,arm64}_installer.exe    — installers, not archives
+#   glab_*_source.tar.gz, checksums.txt            — source, sidecar
+#
+# The anchored ^…$ regexes are what keep those out: `^glab_.*_linux_amd64\.tar\.gz$`
+# does not match `glab_*_linux_amd64.deb`, and the lowercase `_windows_arm64\.zip$`
+# does not match the capitalised `Windows_arm64_installer.exe`. Resolution
+# verified BOTH ways against the RAW upstream asset list (not the generator's
+# already-filtered output) of EVERY in-range release — all 9 of v1.103.0 …
+# v1.111.0: each of the six patterns matches EXACTLY one asset. A pattern
+# matching zero is silently skipped, not an error — it would yield a green run
+# with a missing platform.
 assets:
   linux/amd64:
     - "^glab_.*_linux_amd64\\.tar\\.gz$"
@@ -43,21 +74,38 @@ assets:
     - "^glab_.*_darwin_arm64\\.tar\\.gz$"
   windows/amd64:
     - "^glab_.*_windows_amd64\\.zip$"
+  windows/arm64:
+    - "^glab_.*_windows_arm64\\.zip$"
 
 asset_type:
   type: archive
-  # glab tarballs unpack to bin/glab + docs at the root, and the windows zip
-  # is flat with glab.exe at the root — no wrapper dir on any platform.
+  # Every archive — both tarballs and both zips — unpacks to the SAME four
+  # entries with no wrapper directory: CHANGELOG.md, LICENSE, README.md and
+  # `bin/glab` (`bin/glab.exe` on Windows). Verified on v1.111.0 for
+  # linux/amd64, darwin/arm64, windows/amd64 and windows/arm64 — the Windows
+  # zips are NOT flat. So the strip depth is 0 and `bin/` survives into the
+  # bundle, which is what lets metadata.json point PATH at `${installPath}/bin`
+  # and gives `bin_scan: verify` a directory to scan.
   strip_components: 0
 
 metadata:
   default: metadata.json
 
 catalog:
+  # Resolves against this spec's own directory, and keeping the logo here puts
+  # it inside this workflow's `cli/**` path trigger — a repo-root logo.* sits in
+  # no path filter and replacing it would publish nothing. CATALOG.md is found
+  # by the default probe beside this file.
   logo: logo.svg
 
 versions:
-  min: "1.100.0"
+  # `glab_<ver>_windows_arm64.zip` first ships in v1.103.0 — v1.100.0 through
+  # v1.102.0 lack it and would resolve five platforms while silently skipping
+  # the sixth. The floor is therefore 1.103.0, not the flat layout's 1.100.0,
+  # so every mirrored version resolves all six platforms uniformly. Nothing is
+  # published at the new `gitlab/cli` coordinate yet, so raising it retires no
+  # already-mirrored version.
+  min: "1.103.0"
   new_per_run: 5
   poll_interval: "0 */6 * * *"
 
@@ -68,8 +116,17 @@ tests:
     script: cli/tests/smoke.star
 
 annotations:
+  # From the Phase 1.5 license gate. gitlab-org/cli is not on GitHub, so there
+  # is no `gh api …/license` to read — the id comes off the LICENSE file
+  # upstream ships INSIDE every release archive:
+  #   $ tar xzOf glab_1.111.0_linux_amd64.tar.gz LICENSE | head -3
+  #   MIT License
+  #   Copyright (c) 2022-present GitLab Inc.
+  #   Copyright (c) 2019 GitHub Inc.
   org.opencontainers.image.licenses: "MIT"
 
 announce:
+  # Spelled out, not derived from target.repository — the logical name and the
+  # physical path are related by convention only.
   package: gitlab/cli
   fork: ocx-contrib/index
