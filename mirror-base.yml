@@ -16,14 +16,18 @@
 skip_prereleases: true
 cascade: true
 
-# Carried from the flat spec this repo grew out of. The fleet rule is
-# `build_timestamp: date`, and glab's bare-semver tags carry no `+build`
-# segment that `date` would collide with — so `none` here is the pre-existing
-# choice kept deliberately, not the documented `none` exception. Upstream never
-# re-releases a tag (GitLab release tags are immutable), so the bare version tag
-# is written once and no consumer's `@sha256:` pin is orphaned by a re-publish.
-# Only the rolling cascade aliases move, which is inherent to cascading and true
-# under `date` too.
+# Carried from the flat spec this repo grew out of, deliberately — NOT the
+# documented `none` exception (that is for upstream versions already carrying a
+# `+YYYYMMDD` segment, which glab's bare semver does not).
+#
+# `ocx-mirror package validate` WARNs on this pairing: with `cascade: true`, a
+# re-publish under `none` reuses the bare version tag and orphans the prior
+# digest for registry GC, which can break a consumer's `@sha256:` pin. The
+# exposure here is narrow — GitLab release tags are immutable and the pipeline
+# only ever publishes versions it has not seen, so a re-publish happens only on
+# a deliberate manual re-run. The fleet rule is `date`, and nothing is published
+# at `gitlab/cli` yet, so switching would still cost nothing: it is a live
+# decision, not an oversight.
 build_timestamp: none
 
 # No `verify:` block. `github_asset_digest` is a github_release-source option
