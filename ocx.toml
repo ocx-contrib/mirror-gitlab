@@ -1,11 +1,13 @@
 #:schema https://ocx.sh/schemas/project/v1.json
-# OCX project toolchain for the mirror-glab sibling repo.
+# OCX project toolchain for the mirror-gitlab sibling repo.
 #
-# `cli` + `mirror` are the OCX pipeline tools (same pins as the other
-# mirror-* siblings). `uv` is added so `ocx-mirror pipeline plan` finds
-# `uv` on PATH when invoking the PEP 723 generator script.
+# `uv` is the runtime for the PEP 723 generator script that produces the
+# `url_index` (`cli/scripts/generate.py`). It is pinned to the NAMESPACED
+# `ocx.sh/astral-sh/uv:0` — the flat `ocx.sh/uv:0` this repo used before is
+# forbidden in new work: `mirror-uv` is slated for deletion and that coordinate
+# dies with the `ocx.sh` host, which would leave the generator with no runtime.
 
 [tools]
-cli = "dev.ocx.sh/ocx/cli:0.4.0-dev"
-mirror = "dev.ocx.sh/ocx/mirror:0.5.0-dev"
-uv = "ocx.sh/uv:0"
+cli = "ocx.sh/ocx/cli:0.5"
+mirror = "ocx.sh/ocx/mirror:0.5"
+uv = "ocx.sh/astral-sh/uv:0"

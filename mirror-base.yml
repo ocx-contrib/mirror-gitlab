@@ -1,0 +1,109 @@
+# Repo-wide policy for the GitLab-published tooling mirrored here.
+#
+# NOT a spec: it has no name/target/source and is never loaded on its own.
+# Everything a package owns — name, target, source, assets, asset_type,
+# metadata, catalog, tests, versions, announce, annotations — stays in that
+# package's own mirror.yml.
+#
+# ⚠️ `extends:` is a SHALLOW merge of top-level keys. A spec that sets a key
+# below replaces that block OUTRIGHT — there is no per-key merge. `platforms:`
+# is where this bites: it carries BOTH the runner matrix and the container
+# legs, so a child that restates it to tweak one runner silently drops every
+# `containers:` entry. Nothing reds — the legs simply stop existing, and every
+# os.features claim in that spec goes back to being merely asserted. Restate
+# `platforms:` IN FULL or not at all.
+
+skip_prereleases: true
+cascade: true
+
+# Carried from the flat spec this repo grew out of. The fleet rule is
+# `build_timestamp: date`, and glab's bare-semver tags carry no `+build`
+# segment that `date` would collide with — so `none` here is the pre-existing
+# choice kept deliberately, not the documented `none` exception. Upstream never
+# re-releases a tag (GitLab release tags are immutable), so the bare version tag
+# is written once and no consumer's `@sha256:` pin is orphaned by a re-publish.
+# Only the rolling cascade aliases move, which is inherent to cascading and true
+# under `date` too.
+build_timestamp: none
+
+# No `verify:` block. `github_asset_digest` is a github_release-source option
+# and the package here is `url_index` — glab publishes through GitLab Releases
+# on gitlab.com, not GitHub. Upstream ships a `checksums.txt` beside the
+# archives but no per-asset digest the pipeline can read from the release
+# metadata, so there is nothing to wire. Downloads are HTTPS from gitlab.com.
+
+concurrency:
+  # Assets are ~18 MB archives around a single ~50 MB static binary, fetched
+  # from gitlab.com rather than a CDN — these limits are the flat spec's,
+  # proven against this exact upstream.
+  max_downloads: 4
+  max_bundles: 2
+  max_pushes: 2
+  rate_limit_ms: 200
+  max_retries: 3
+  compression_threads: 0
+
+# `verify`, and it is available here: every glab archive unpacks to a real
+# `bin/` directory (`bin/glab`, `bin/glab.exe` on Windows) and metadata.json
+# points PATH at `${installPath}/bin`, which is exactly the
+# `${installPath}/<dir>` shape the scan requires — a raw-binary mirror whose
+# PATH is a bare `${installPath}` is rejected at spec load with exit 65 and must
+# use `off`. `verify` checks the hand-written `binaries` claim against what the
+# bundle actually exposes, so a future upstream that adds a second executable to
+# `bin/` reds the run instead of silently publishing an understated claim.
+bin_scan: verify
+
+# ─── Platform matrix ────────────────────────────────────────────────────────
+#
+# `os.features` states what an artifact REQUIRES OF THE HOST — it is not a
+# label for how it was built. glab is a pure-Go build: measured on v1.111.0,
+# both Linux binaries are fully static, no PT_INTERP and no DT_NEEDED (evidence
+# above cli/mirror.yml's `assets:`), and upstream publishes no musl/glibc split
+# to choose between. So both Linux keys are BARE. Tagging them `+libc.musl`
+# would be a false requirement that hid them from every glibc host.
+#
+# A bare key claims universality, so it must prove it: ubuntu (glibc) + alpine
+# (musl) + fedora (different glibc vintage). The alpine leg IS the proof —
+# drop it and the universal claim is merely asserted.
+#
+# A future package here whose libc measurement differs must restate this whole
+# block in its own spec — see the shallow-merge warning at the top.
+platforms:
+  linux/amd64:
+    runner: ubuntu-latest
+    containers:
+      - { image: "ubuntu:24.04", shell: bash }
+      - { image: "alpine:3.20",  shell: sh }
+      - { image: "fedora:40",    shell: bash }
+  linux/arm64:
+    # arm64 container legs run natively — no qemu — so the runner arch must
+    # match the platform or the renderer reds the leg up front.
+    runner: ubuntu-24.04-arm
+    containers:
+      - { image: "ubuntu:24.04", shell: bash }
+      - { image: "alpine:3.20",  shell: sh }
+      - { image: "fedora:40",    shell: bash }
+  darwin/amd64:
+    # Intel slice tested on the arm64 macos-14 runner via Rosetta 2 — GitHub's
+    # native macos-13 Intel pool is exhausted and deadlocks the push job.
+    runner: macos-14
+    prefix: ["arch", "-x86_64"]
+  darwin/arm64:
+    runner: macos-14
+    shell: bash
+  windows/amd64:
+    runner: windows-latest
+    shell: pwsh
+  windows/arm64:
+    # Native arm64 Windows runner — the amd64 pool cannot execute an ARM64 PE,
+    # and `glab_<ver>_windows_arm64.zip` is a real one (measured on 1.111.0:
+    # `bin/glab.exe` is `PE32+ … ARM64, 6 sections`), not a relabelled x64.
+    runner: windows-11-arm
+    shell: pwsh
+  # No `containers:` on darwin or windows — those runners have no Linux
+  # container engine, and the key is rejected at spec load.
+
+notify:
+  discord:
+    webhook_secret: OCX_MIRROR_DISCORD_HOOK
+    user_id: "227748867204972545"  # pinged in-message on failures

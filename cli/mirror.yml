@@ -1,0 +1,75 @@
+extends: ../mirror-base.yml
+
+# The GitLab CLI. Namespace + package follow the 2026-08-02 naming rule: the
+# vendor beats the org handle (`gitlab`, not `gitlab-org`) and the package
+# segment is the name the project publishes under, not the binary you type —
+# so `gitlab/cli` ships `glab`, exactly as `github/cli` ships `gh`.
+name: cli
+
+target:
+  registry: ghcr.io
+  repository: ocx-contrib/gitlab/cli
+
+# glab releases on gitlab.com, not GitHub, so there is no `github_release`
+# source to point at — the generator calls the GitLab Releases API through
+# ocx-mirror-sdk and emits a url_index. `uv` is the runtime that runs it and is
+# pinned in ocx.toml as the NAMESPACED `ocx.sh/astral-sh/uv:0`; the legacy flat
+# `ocx.sh/uv:0` is forbidden — it dies with the ocx.sh host.
+source:
+  type: url_index
+  generator:
+    command: ["uv", "run", "scripts/generate.py"]
+    timeout_seconds: 240
+
+# Linkage measured 2026-08-01 on v1.111.0, both Linux arches (evidence in
+# .claude/libc-audit-2026-08-01.json):
+#   glab: ELF 64-bit LSB executable, statically linked
+#   readelf -l | grep INTERP  → no INTERP segment
+#   readelf -d | grep NEEDED  → no output
+# Fully static ⇒ requires nothing of the host ⇒ BARE keys, no libc feature.
+# Upstream ships one linux build per arch — there is no musl/gnu split.
+#
+# Anchored patterns exclude the checksums file and the non-amd64/arm64 triples
+# upstream also publishes. Upstream ships no windows/arm64 build, so that
+# platform is deliberately absent rather than declared-and-skipped.
+assets:
+  linux/amd64:
+    - "^glab_.*_linux_amd64\\.tar\\.gz$"
+  linux/arm64:
+    - "^glab_.*_linux_arm64\\.tar\\.gz$"
+  darwin/amd64:
+    - "^glab_.*_darwin_amd64\\.tar\\.gz$"
+  darwin/arm64:
+    - "^glab_.*_darwin_arm64\\.tar\\.gz$"
+  windows/amd64:
+    - "^glab_.*_windows_amd64\\.zip$"
+
+asset_type:
+  type: archive
+  # glab tarballs unpack to bin/glab + docs at the root, and the windows zip
+  # is flat with glab.exe at the root — no wrapper dir on any platform.
+  strip_components: 0
+
+metadata:
+  default: metadata.json
+
+catalog:
+  logo: logo.svg
+
+versions:
+  min: "1.100.0"
+  new_per_run: 5
+  poll_interval: "0 */6 * * *"
+
+# `script:` resolves from the REPOSITORY ROOT — unlike `metadata.default` and
+# `catalog.logo` above, which resolve against this spec's own directory.
+tests:
+  - name: smoke
+    script: cli/tests/smoke.star
+
+annotations:
+  org.opencontainers.image.licenses: "MIT"
+
+announce:
+  package: gitlab/cli
+  fork: ocx-contrib/index
