@@ -107,7 +107,7 @@ versions:
   # already-mirrored version.
   min: "1.103.0"
   new_per_run: 5
-  poll_interval: "0 */6 * * *"
+  poll_interval: "29 2-23/6 * * *"
 
 # `script:` resolves from the REPOSITORY ROOT — unlike `metadata.default` and
 # `catalog.logo` above, which resolve against this spec's own directory.
